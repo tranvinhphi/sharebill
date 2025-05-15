@@ -1,0 +1,133 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>APP SHARE BILL HỘI HAM CHƠI</title>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>APP SHARE BILL HỘI HAM CHƠI</h1>
+    </header>
+    <div class="tabs">
+        <button class="tablink active" onclick="openTab(event, 'Tab1')">Mục chi tiêu</button>
+        <button class="tablink" onclick="openTab(event, 'Tab2')">Gia đình tham gia</button>
+        <button class="tablink" onclick="openTab(event, 'Tab3')">Tổng kết</button>
+    </div>
+
+    <!-- Tab 1: Mục chi tiêu -->
+    <div id="Tab1" class="tabcontent" style="display: block;">
+        <h2>Hạng mục chi tiêu</h2>
+        <table id="expenseTable">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Hạng mục</th>
+                    <th>Tổng chi phí (VNĐ)</th>
+                    <th>Ngày</th>
+                    <th>Người chi</th>
+                </tr>
+            </thead>
+            <tbody id="expenseBody"></tbody>
+        </table>
+        <div class="controls">
+            <button class="add-btn" onclick="addExpense()">+</button>
+            <button class="setting-btn" onclick="toggleEditMode('expense')">Setting</button>
+        </div>
+    </div>
+
+    <!-- Tab 2: Gia đình tham gia -->
+    <div id="Tab2" class="tabcontent">
+        <h2>Gia đình tham gia</h2>
+        <table id="familyTable">
+            <thead id="familyTableHead">
+                <tr>
+                    <th>Hạng mục</th>
+                </tr>
+            </thead>
+            <tbody id="familyBody"></tbody>
+        </table>
+        <div class="controls">
+            <button class="add-btn" onclick="addFamily()">+</button>
+            <button class="setting-btn" onclick="toggleEditMode('family')">Setting</button>
+            <button onclick="calculate()">Tính toán</button>
+        </div>
+    </div>
+
+    <!-- Tab 3: Tổng kết -->
+    <div id="Tab3" class="tabcontent">
+        <h2>Tổng kết</h2>
+        <div class="filter">
+            <label>Từ ngày:</label>
+            <input type="date" id="startDate">
+            <label>Đến ngày:</label>
+            <input type="date" id="endDate">
+            <button onclick="filterResults()">Lọc</button>
+        </div>
+        <table id="resultTable">
+            <thead id="resultTableHead">
+                <tr>
+                    <th>Hạng mục</th>
+                    <th>Tổng chi phí (VNĐ)</th>
+                    <th>Tổng người</th>
+                    <th>Số tiền/đầu người (VNĐ)</th>
+                    <th>Người đại diện chi tiền</th>
+                </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+            <tfoot id="resultFooter"></tfoot>
+        </table>
+        <div id="summary">
+            <h3>Tổng kết</h3>
+            <ul id="summaryList"></ul>
+            <h3>Hoàn trả</h3>
+            <ul id="refundList"></ul>
+        </div>
+        <button class="reset-btn" onclick="resetData()">Reset Data</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
