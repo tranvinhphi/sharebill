@@ -41,25 +41,51 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>APP SHARE BILL HỘI HAM CHƠI</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HỘI HAM CHƠI</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header>
-        <h1>APP SHARE BILL HỘI HAM CHƠI</h1>
+        <h1>HỘI HAM CHƠI</h1>
     </header>
+
     <div class="tabs">
-        <button class="tablink active" onclick="openTab(event, 'Tab1')">Mục chi tiêu</button>
-        <button class="tablink" onclick="openTab(event, 'Tab2')">Gia đình tham gia</button>
-        <button class="tablink" onclick="openTab(event, 'Tab3')">Tổng kết</button>
+        <button class="tablink active" onclick="openTab(event, 'Tab0')">Thêm</button>
+        <button class="tablink" onclick="openTab(event, 'Tab1')">Chi tiêu</button>
+        <button class="tablink" onclick="openTab(event, 'Tab2')">Tham gia</button>
+        <button class="tablink" onclick="openTab(event, 'Tab3')">Tổng</button>
     </div>
 
-    <!-- Tab 1: Mục chi tiêu -->
-    <div id="Tab1" class="tabcontent" style="display: block;">
-        <h2>Hạng mục chi tiêu</h2>
+    <div class="tabcontent" id="Tab0" style="display: block;">
+        <h3>Thêm hạng mục chi tiêu mới</h3>
+        <form id="newExpenseForm" onsubmit="handleNewExpense(event)" class="expense-form">
+            <div class="form-group">
+                <label for="newItem">Hạng mục chi tiêu:</label>
+                <input type="text" id="newItem" placeholder="Nhập tên hạng mục" required>
+            </div>
+            <div class="form-group">
+                <label for="newCost">Số tiền chi tiêu (VNĐ):</label>
+                <input type="number" id="newCost" placeholder="Nhập số tiền" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="newPayer">Người chi:</label>
+                <select id="newPayer" required>
+                    <!-- Được đổ động bởi JavaScript -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="newDatetime">Ngày giờ:</label>
+                <input type="datetime-local" id="newDatetime" required>
+            </div>
+            <div class="form-buttons">
+                <button type="submit" class="add-btn"><span class="icon">+</span></button>
+            </div>
+        </form>
+    </div>
+
+    <div class="tabcontent" id="Tab1">
+        <h3>Hạng mục chi tiêu</h3>
         <table id="expenseTable">
             <thead>
                 <tr>
@@ -73,59 +99,50 @@
             <tbody id="expenseBody"></tbody>
         </table>
         <div class="controls">
-            <button class="add-btn" onclick="addExpense()">+</button>
             <button class="setting-btn" onclick="toggleEditMode('expense')">Setting</button>
         </div>
     </div>
 
-    <!-- Tab 2: Gia đình tham gia -->
-    <div id="Tab2" class="tabcontent">
-        <h2>Gia đình tham gia</h2>
+    <div class="tabcontent" id="Tab2">
+        <h3>Gia đình tham gia</h3>
         <table id="familyTable">
             <thead id="familyTableHead">
-                <tr>
-                    <th>Hạng mục</th>
-                </tr>
+                <tr></tr>
             </thead>
             <tbody id="familyBody"></tbody>
         </table>
         <div class="controls">
             <button class="add-btn" onclick="addFamily()">+</button>
             <button class="setting-btn" onclick="toggleEditMode('family')">Setting</button>
-            <button onclick="calculate()">Tính toán</button>
+            <button class="update-btn" onclick="updateParticipants()">Update</button>
+            <button class="update-btn" onclick="calculate()">Tính toán</button>
         </div>
     </div>
 
-    <!-- Tab 3: Tổng kết -->
-    <div id="Tab3" class="tabcontent">
-        <h2>Tổng kết</h2>
+    <div class="tabcontent" id="Tab3">
+        <h3>Tổng kết</h3>
         <div class="filter">
             <label>Từ ngày:</label>
             <input type="date" id="startDate">
             <label>Đến ngày:</label>
             <input type="date" id="endDate">
-            <button onclick="filterResults()">Lọc</button>
+            <button class="update-btn" onclick="filterResults()">Lọc</button>
         </div>
         <table id="resultTable">
             <thead id="resultTableHead">
-                <tr>
-                    <th>Hạng mục</th>
-                    <th>Tổng chi phí (VNĐ)</th>
-                    <th>Tổng người</th>
-                    <th>Số tiền/đầu người (VNĐ)</th>
-                    <th>Người đại diện chi tiền</th>
-                </tr>
+                <tr></tr>
             </thead>
             <tbody id="resultBody"></tbody>
             <tfoot id="resultFooter"></tfoot>
         </table>
         <div id="summary">
-            <h3>Tổng kết</h3>
-            <ul id="summaryList"></ul>
-            <h3>Hoàn trả</h3>
-            <ul id="refundList"></ul>
+            <h4>Tổng kết</h4>
+            <div id="summaryList"></div>
         </div>
-        <button class="reset-btn" onclick="resetData()">Reset Data</button>
+        <div id="refundList"></div>
+        <div class="controls">
+            <button class="reset-btn" onclick="resetData()">Reset Data</button>
+        </div>
     </div>
 
     <script src="script.js"></script>

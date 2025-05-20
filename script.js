@@ -1,5 +1,8 @@
-let families = JSON.parse(localStorage.getItem('families')) || ['Nhà Nguyễn', 'Nhà Trần', 'Nhà Lê'];
-let expenses = JSON.parse(localStorage.getItem('expenses')) || [{ item: 'Ăn uống', cost: 4000000, date: '2025-05-15', payer: 'Nhà Nguyễn' }];
+let families = JSON.parse(localStorage.getItem('families')) || [
+    'Nhân', 'Minh', 'Phi', 'Hoài', 'An', 'Nam', 'Ngọc', 'Tuân', 'Quyên',
+    'Nhuận', 'Thông', 'Tự', 'Khoa', 'Vinh'
+];
+let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
 let participantsData = JSON.parse(localStorage.getItem('participantsData')) || [];
 let resultsData = JSON.parse(localStorage.getItem('resultsData')) || [];
 let editMode = { expense: false, family: false };
@@ -8,20 +11,29 @@ let editMode = { expense: false, family: false };
 function loadData() {
     try {
         const expenseBody = document.getElementById('expenseBody');
+        if (!expenseBody) {
+            console.error('expenseBody element not found');
+            return;
+        }
         expenseBody.innerHTML = '';
-        expenses.forEach((exp, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td><input type="text" class="item" value="${exp.item || ''}" required><span class="edit-icon" onclick="editExpense(${index})">✎</span><span class="delete-icon" onclick="deleteExpense(${index})">✖</span></td>
-                <td><input type="number" class="cost" value="${exp.cost || 0}" required></td>
-                <td><input type="date" class="date" value="${exp.date || '2025-05-15'}" required></td>
-                <td><select class="payer" onchange="updatePayer(${index})" required>${families.map(f => `<option value="${f}" ${f === exp.payer ? 'selected' : ''}>${f}</option>`).join('')}</select></td>
-            `;
-            expenseBody.appendChild(row);
-        });
+        if (expenses.length === 0) {
+            expenseBody.innerHTML = '<tr><td colspan="5">Chưa có hạng mục chi tiêu nào.</td></tr>';
+        } else {
+            expenses.forEach((exp, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><input type="text" class="item" value="${exp.item || ''}" required><span class="edit-icon" onclick="editExpense(${index})">✎</span><span class="delete-icon" onclick="deleteExpense(${index})">✖</span></td>
+                    <td><input type="number" class="cost" value="${exp.cost || 0}" required></td>
+                    <td><input type="date" class="date" value="${exp.date || '2025-05-15'}" required></td>
+                    <td><select class="payer" onchange="updatePayer(${index})" required>${families.map(f => `<option value="${f}" ${f === exp.payer ? 'selected' : ''}>${f}</option>`).join('')}</select></td>
+                `;
+                expenseBody.appendChild(row);
+            });
+        }
         updateFamilyTable();
         updateResultTable();
+        updatePayerSelect();
     } catch (e) {
         console.error('Lỗi khi tải dữ liệu:', e);
         resetData();
@@ -38,35 +50,78 @@ function openTab(event, tabName) {
     for (let i = 0; i < tablinks.length; i++) {
         tablinks[i].className = tablinks[i].className.replace(" active", "");
     }
-    document.getElementById(tabName).style.display = "block";
-    event.currentTarget.className += " active";
-    saveData();
+    const tab = document.getElementById(tabName);
+    if (tab) {
+        tab.style.display = "block";
+        event.currentTarget.className += " active";
+        if (tabName === 'Tab2') {
+            updateFamilyTable();
+        }
+        saveData();
+    } else {
+        console.error(`Tab with ID ${tabName} not found`);
+    }
 }
 
-// Add expense
+// Show popup for adding new expense (not used since we have a form now)
 function addExpense() {
-    const tbody = document.getElementById('expenseBody');
-    const newRow = document.createElement('tr');
-    const rowCount = tbody.rows.length + 1;
-    const today = new Date().toISOString().split('T')[0];
-    newRow.innerHTML = `
-        <td>${rowCount}</td>
-        <td><input type="text" class="item" value="Hạng mục mới" required><span class="edit-icon" style="display:none;">✎</span><span class="delete-icon" style="display:none;">✖</span></td>
-        <td><input type="number" class="cost" value="0" required></td>
-        <td><input type="date" class="date" value="${today}" required></td>
-        <td><select class="payer" onchange="updatePayer(${rowCount - 1})" required>${families.map(f => `<option value="${f}">${f}</option>`).join('')}</select></td>
-    `;
-    tbody.appendChild(newRow);
-    expenses.push({ item: 'Hạng mục mới', cost: 0, date: today, payer: families[0] });
-    updateFamilyTable();
-    saveData();
+    const popup = document.getElementById('addExpensePopup');
+    const payerSelect = document.getElementById('popupPayer');
+    if (payerSelect) {
+        payerSelect.innerHTML = families.map(f => `<option value="${f}">${f}</option>`).join('');
+        document.getElementById('popupDate').value = new Date().toISOString().split('T')[0];
+        popup.style.display = 'block';
+    }
+}
+
+// Save new expense from popup (not used, kept for compatibility)
+function saveNewExpense() {
+    const item = document.getElementById('popupItem').value;
+    const cost = parseInt(document.getElementById('popupCost').value) || 0;
+    const date = document.getElementById('popupDate').value;
+    const payer = document.getElementById('popupPayer').value;
+
+    if (item && cost && date && payer) {
+        const tbody = document.getElementById('expenseBody');
+        const rowCount = tbody.rows.length + 1;
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td>${rowCount}</td>
+            <td><input type="text" class="item" value="${item}" required><span class="edit-icon" onclick="editExpense(${rowCount - 1})">✎</span><span class="delete-icon" onclick="deleteExpense(${rowCount - 1})">✖</span></td>
+            <td><input type="number" class="cost" value="${cost}" required></td>
+            <td><input type="date" class="date" value="${date}" required></td>
+            <td><select class="payer" onchange="updatePayer(${rowCount - 1})" required>${families.map(f => `<option value="${f}" ${f === payer ? 'selected' : ''}>${f}</option>`).join('')}</select></td>
+        `;
+        tbody.appendChild(newRow);
+        expenses.push({ item, cost, date, payer });
+        participantsData.push(new Array(families.length).fill(0));
+        saveData();
+        updateFamilyTable();
+        closePopup();
+        alert('Hạng mục mới đã được thêm!');
+    } else {
+        alert('Vui lòng điền đầy đủ thông tin!');
+    }
+}
+
+// Close popup (not used, kept for compatibility)
+function closePopup() {
+    const popup = document.getElementById('addExpensePopup');
+    if (popup) {
+        popup.style.display = 'none';
+        document.getElementById('popupItem').value = '';
+        document.getElementById('popupCost').value = '';
+        document.getElementById('popupDate').value = '';
+        document.getElementById('popupPayer').value = '';
+    }
 }
 
 // Add family
 function addFamily() {
-    const newFamily = prompt("Nhập tên gia đình mới (ví dụ: Nhà Phạm):");
+    const newFamily = prompt("Nhập tên gia đình mới:");
     if (newFamily && !families.includes(newFamily)) {
         families.push(newFamily);
+        participantsData.forEach(data => data.push(0));
         updateFamilyTable();
         updateExpensePayers();
         updateResultTable();
@@ -76,27 +131,39 @@ function addFamily() {
 
 // Update family table
 function updateFamilyTable() {
-    const familyHead = document.getElementById('familyTableHead').rows[0];
-    familyHead.innerHTML = '<th>Hạng mục</th>';
+    const familyHead = document.getElementById('familyTableHead');
+    const familyBody = document.getElementById('familyBody');
+
+    if (!familyHead || !familyBody) {
+        console.error('familyTableHead or familyBody element not found');
+        return;
+    }
+
+    const headerRow = familyHead.rows[0];
+    headerRow.innerHTML = '<th>Hạng mục</th>';
     families.forEach((family, index) => {
         const th = document.createElement('th');
-        th.innerHTML = `${family}<span class="edit-icon" onclick="editFamily(${index})" style="display:none;">✎</span><span class="delete-icon" onclick="deleteFamily(${index})" style="display:none;">✖</span>`;
-        familyHead.appendChild(th);
+        th.innerHTML = `${family}<span class="edit-icon" onclick="editFamily(${index})" style="display:${editMode.family ? 'inline' : 'none'};">✎</span><span class="delete-icon" onclick="deleteFamily(${index})" style="display:${editMode.family ? 'inline' : 'none'};">✖</span>`;
+        headerRow.appendChild(th);
     });
 
-    const familyBody = document.getElementById('familyBody');
     familyBody.innerHTML = '';
-    expenses.forEach((expense, index) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${expense.item}</td>
-            ${families.map((_, i) => {
-                const participantCount = participantsData[index] ? participantsData[index][i] || 0 : 0;
-                return `<td><input type="number" class="participants" value="${participantCount}" required></td>`;
-            }).join('')}
-        `;
-        familyBody.appendChild(row);
-    });
+    if (expenses.length === 0) {
+        familyBody.innerHTML = '<tr><td colspan="' + (families.length + 1) + '">Chưa có hạng mục chi tiêu nào.</td></tr>';
+    } else {
+        expenses.forEach((expense, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${expense.item}</td>
+                ${families.map((_, i) => {
+                    const participantCount = participantsData[index] ? participantsData[index][i] || 0 : 0;
+                    return `<td><input type="number" class="participants" value="${participantCount}" required></td>`;
+                }).join('')}
+            `;
+            familyBody.appendChild(row);
+        });
+    }
+    saveData();
 }
 
 // Update payer select in expenses
@@ -106,6 +173,15 @@ function updateExpensePayers() {
         const select = row.querySelector('.payer');
         select.innerHTML = families.map(f => `<option value="${f}" ${f === expenses[index].payer ? 'selected' : ''}>${f}</option>`).join('');
     });
+    updatePayerSelect();
+}
+
+function updatePayerSelect() {
+    const select = document.getElementById('newPayer');
+    if (select) {
+        select.innerHTML = families.map(f => `<option value="${f}">${f}</option>`).join('');
+        select.value = families[0]; // Default to first family
+    }
 }
 
 // Update payer value
@@ -115,10 +191,26 @@ function updatePayer(index) {
     saveData();
 }
 
+// Update participant data
+function updateParticipants() {
+    const rows = document.querySelectorAll('#familyBody tr');
+    participantsData = [];
+    rows.forEach(row => {
+        const participants = Array.from(row.querySelectorAll('.participants')).map(p => parseInt(p.value) || 0);
+        participantsData.push(participants);
+    });
+    saveData();
+    alert('Dữ liệu số người tham gia đã được lưu!');
+}
+
 // Update result table structure
 function updateResultTable() {
-    const resultHead = document.getElementById('resultTableHead').rows[0];
-    resultHead.innerHTML = `
+    const resultHead = document.getElementById('resultTableHead');
+    if (!resultHead) {
+        console.error('resultTableHead element not found');
+        return;
+    }
+    resultHead.rows[0].innerHTML = `
         <th>Hạng mục</th>
         <th>Tổng chi phí (VNĐ)</th>
         <th>Tổng người</th>
@@ -130,6 +222,8 @@ function updateResultTable() {
 // Toggle edit mode
 function toggleEditMode(type) {
     editMode[type] = !editMode[type];
+    const button = document.querySelector(`#${type === 'expense' ? 'Tab1' : 'Tab2'} .setting-btn`);
+    button.classList.toggle('selected', editMode[type]);
     const icons = document.querySelectorAll(`#${type === 'expense' ? 'expenseBody' : 'familyTableHead'} .edit-icon, #${type === 'expense' ? 'expenseBody' : 'familyTableHead'} .delete-icon`);
     icons.forEach(icon => {
         icon.style.display = editMode[type] ? 'inline' : 'none';
@@ -164,12 +258,11 @@ function deleteExpense(index) {
         expenses.splice(index, 1);
         participantsData.splice(index, 1);
         document.querySelectorAll('#expenseBody tr')[index].remove();
-        // Update STT
         document.querySelectorAll('#expenseBody tr').forEach((tr, i) => {
             tr.cells[0].textContent = i + 1;
         });
-        updateFamilyTable();
         saveData();
+        updateFamilyTable();
     }
 }
 
@@ -181,6 +274,11 @@ function editFamily(index) {
         families[index] = newName;
         expenses.forEach(exp => {
             if (exp.payer === oldName) exp.payer = newName;
+        });
+        participantsData.forEach(data => {
+            const value = data[index];
+            data.splice(index, 1);
+            data.push(value);
         });
         updateFamilyTable();
         updateExpensePayers();
@@ -197,6 +295,7 @@ function deleteFamily(index) {
             expenses.forEach(exp => {
                 if (exp.payer === familyToDelete) exp.payer = families[0];
             });
+            participantsData.forEach(data => data.splice(index, 1));
             updateFamilyTable();
             updateExpensePayers();
             saveData();
@@ -253,12 +352,10 @@ function calculate() {
         shareTotals[family] = 0;
     });
 
-    // Calculate paid totals
     expenses.forEach(exp => {
         paidTotals[exp.payer] = (paidTotals[exp.payer] || 0) + exp.cost;
     });
 
-    // Calculate share totals
     resultsData = [];
     rows.forEach((row, index) => {
         const participants = Array.from(row.querySelectorAll('.participants')).map(p => parseInt(p.value) || 0);
@@ -272,7 +369,6 @@ function calculate() {
         });
     });
 
-    // Display summary
     const summaryTable = document.createElement('table');
     summaryTable.style.width = '100%';
     summaryTable.style.borderCollapse = 'collapse';
@@ -320,7 +416,6 @@ function calculate() {
     `;
     summaryBody.appendChild(totalRow);
 
-    // Refund list (optional, can be removed if not needed)
     refundList.innerHTML = '';
 
     openTab({ currentTarget: document.querySelector('.tablink:last-child') }, 'Tab3');
@@ -386,12 +481,6 @@ function filterResults() {
         shareTotals[family] = 0;
     });
 
-    // Calculate paid totals for filtered results
-    filteredResults.forEach(result => {
-        paidTotals[result.expense.payer] = (paidTotals[result.expense.payer] || 0) + result.expense.cost;
-    });
-
-    // Calculate share totals for filtered results
     filteredResults.forEach((result, idx) => {
         const originalIndex = filteredIndices[idx];
         const participants = participantsData[originalIndex];
@@ -401,7 +490,6 @@ function filterResults() {
         });
     });
 
-    // Display summary
     const summaryTable = document.createElement('table');
     summaryTable.style.width = '100%';
     summaryTable.style.borderCollapse = 'collapse';
@@ -449,7 +537,6 @@ function filterResults() {
     `;
     summaryBody.appendChild(totalRow);
 
-    // Refund list (optional, can be removed if not needed)
     refundList.innerHTML = '';
 
     saveData();
@@ -458,8 +545,11 @@ function filterResults() {
 // Reset data
 function resetData() {
     if (confirm('Bạn có chắc muốn reset dữ liệu? Tất cả dữ liệu sẽ bị xóa!')) {
-        families = ['Nhà Nguyễn', 'Nhà Trần', 'Nhà Lê'];
-        expenses = [{ item: 'Ăn uống', cost: 4000000, date: '2025-05-15', payer: 'Nhà Nguyễn' }];
+        families = [
+            'Nhân', 'Minh', 'Phi', 'Hoài', 'An', 'Nam', 'Ngọc', 'Tuân', 'Quyên',
+            'Nhuận', 'Thông', 'Tự', 'Khoa', 'Vinh'
+        ];
+        expenses = [];
         participantsData = [];
         resultsData = [];
         localStorage.clear();
@@ -475,12 +565,6 @@ function resetData() {
 
 // Save data to localStorage
 function saveData() {
-    expenses = Array.from(document.querySelectorAll('#expenseBody tr')).map(row => ({
-        item: row.querySelector('.item').value,
-        cost: parseInt(row.querySelector('.cost').value) || 0,
-        date: row.querySelector('.date').value,
-        payer: row.querySelector('.payer').value
-    }));
     localStorage.setItem('expenses', JSON.stringify(expenses));
     localStorage.setItem('families', JSON.stringify(families));
     localStorage.setItem('participantsData', JSON.stringify(participantsData));
@@ -488,4 +572,111 @@ function saveData() {
 }
 
 // Initial load
-document.addEventListener('DOMContentLoaded', loadData);
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded, running loadData');
+    loadData();
+    updatePayerSelect();
+});
+
+// Đổ danh sách gia đình vào select người chi trong Tab Thêm hạng mục
+document.addEventListener('DOMContentLoaded', () => {
+    const newPayerSelect = document.getElementById('newPayer');
+    if (newPayerSelect && typeof families !== 'undefined') {
+        newPayerSelect.innerHTML = families.map(f => `<option value="${f}">${f}</option>`).join('');
+    }
+});
+
+function handleNewExpense(event) {
+    event.preventDefault();
+
+    const item = document.getElementById('newItem').value.trim();
+    const cost = parseInt(document.getElementById('newCost').value);
+    const payer = document.getElementById('newPayer').value;
+    const datetime = document.getElementById('newDatetime').value;
+
+    if (!item || isNaN(cost) || !payer || !datetime) {
+        alert("Vui lòng điền đầy đủ thông tin!");
+        return;
+    }
+
+    const date = datetime.split("T")[0];
+
+    // Thêm mục mới
+    expenses.push({ item, cost, date, payer });
+    participantsData.push(new Array(families.length).fill(0));
+
+    saveData();
+    updateFamilyTable();
+    updateExpensePayers();
+    updateResultTable();
+    loadData();
+
+    document.getElementById('newExpenseForm').reset();
+    alert("Hạng mục mới đã được thêm!");
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const now = new Date();
+    const localISOTime = now.toISOString().slice(0, 16);
+    const datetimeInput = document.getElementById('newDatetime');
+    if (datetimeInput) {
+        datetimeInput.value = localISOTime;
+    }
+});
+
+async function updateGithubAndTriggerNetlify(newData) {
+    const githubToken = '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';
+    const githubUsername = 'tranvinhphi';
+    const repoName = 'sharebill';
+    const filePath = 'data.json';
+    const branchName = 'main';
+    const netlifyBuildHookUrl = 'https://api.netlify.com/build_hooks/682bff5159c4f500fbbde073';
+
+    // Bước 1: Lấy SHA hiện tại của file
+    const getUrl = `https://api.github.com/repos/${githubUsername}/${repoName}/contents/${filePath}?ref=${branchName}`;
+    const getResponse = await fetch(getUrl, {
+        headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: 'application/vnd.github+json',
+        },
+    });
+
+    if (!getResponse.ok) {
+        alert('❌ Lỗi khi lấy thông tin file từ GitHub');
+        return;
+    }
+
+    const fileData = await getResponse.json();
+    const fileSha = fileData.sha;
+
+    // Bước 2: Cập nhật file với dữ liệu mới
+    const putUrl = `https://api.github.com/repos/${githubUsername}/${repoName}/contents/${filePath}`;
+    const updateResponse = await fetch(putUrl, {
+        method: 'PUT',
+        headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: 'application/vnd.github+json',
+        },
+        body: JSON.stringify({
+            message: 'Update data.json from web app',
+            content: btoa(unescape(encodeURIComponent(JSON.stringify(newData, null, 2)))),
+            sha: fileSha,
+            branch: branchName,
+        }),
+    });
+
+    if (!updateResponse.ok) {
+        alert('❌ Lỗi khi cập nhật GitHub');
+        return;
+    }
+
+    // Bước 3: Gọi webhook Netlify để redeploy
+    const netlifyResponse = await fetch(netlifyBuildHookUrl, { method: 'POST' });
+
+    if (!netlifyResponse.ok) {
+        alert('❌ Lỗi khi gọi Netlify webhook');
+        return;
+    }
+
+    alert('✅ Đã cập nhật dữ liệu và kích hoạt deploy Netlify thành công!');
+}
