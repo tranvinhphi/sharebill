@@ -5,8 +5,8 @@ let resultsData = [];
 let editMode = { expense: false, family: false };
 
 const { createClient } = Supabase;
-const supabaseUrl = 'https://your-project-id.supabase.co'; // Thay bằng URL của bạn
-const supabaseKey = 'your-anon-key'; // Thay bằng Anon Key của bạn
+const supabaseUrl = 'https://djsryuxrhsjpsurceyex.supabase.co'; // Thay bằng URL của bạn
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqc3J5dXhyaHNqcHN1cmNleWV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjYzODYsImV4cCI6MjA2MzMwMjM4Nn0.AiMmGzbxp0YG6QprZQFfSh0fQdTMPGZhB2boUjiUTkg'; // Thay bằng Anon Key của bạn
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 document.addEventListener('DOMContentLoaded', async () => {
