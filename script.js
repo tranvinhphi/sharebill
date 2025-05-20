@@ -1,13 +1,54 @@
-const { createClient } = Supabase;
-const supabaseUrl = 'https://djsryuxrhsjpsurceyex.supabase.co'; // Thay bằng URL của bạn
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqc3J5dXhyaHNqcHN1cmNleWV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjYzODYsImV4cCI6MjA2MzMwMjM4Nn0.AiMmGzbxp0YG6QprZQFfSh0fQdTMPGZhB2boUjiUTkg'; // Thay bằng Anon Key của bạn
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 let families = [];
 let expenses = [];
 let participantsData = [];
 let resultsData = [];
 let editMode = { expense: false, family: false };
+
+const { createClient } = Supabase;
+const supabaseUrl = 'https://your-project-id.supabase.co'; // Thay bằng URL của bạn
+const supabaseKey = 'your-anon-key'; // Thay bằng Anon Key của bạn
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM fully loaded, running initial load');
+    await loadFamiliesFromSupabase();
+    await loadDataFromSupabase();
+    updatePayerSelect();
+
+    // Thêm realtime sync
+    supabase
+        .channel('expenses-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload) => {
+            console.log('Dữ liệu chi tiêu thay đổi:', payload);
+            loadDataFromSupabase();
+        })
+        .subscribe();
+
+    supabase
+        .channel('participants-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'participants' }, (payload) => {
+            console.log('Dữ liệu participants thay đổi:', payload);
+            loadDataFromSupabase();
+        })
+        .subscribe();
+
+    supabase
+        .channel('families-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'families' }, (payload) => {
+            console.log('Dữ liệu gia đình thay đổi:', payload);
+            loadFamiliesFromSupabase();
+            loadDataFromSupabase();
+        })
+        .subscribe();
+
+    // Đặt giá trị mặc định cho datetime
+    const now = new Date();
+    const localISOTime = now.toISOString().slice(0, 16);
+    const datetimeInput = document.getElementById('newDatetime');
+    if (datetimeInput) {
+        datetimeInput.value = localISOTime;
+    }
+});
 
 async function loadFamiliesFromSupabase() {
     const { data, error } = await supabase
@@ -25,18 +66,32 @@ async function loadFamiliesFromSupabase() {
 }
 
 async function loadDataFromSupabase() {
-    const { data: expensesData, error } = await supabase
+    const { data: expensesData, error: expensesError } = await supabase
         .from('expenses')
         .select('*')
         .order('created_at', { ascending: true });
 
-    if (error) {
-        console.error('Lỗi khi tải dữ liệu chi tiêu:', error);
+    if (expensesError) {
+        console.error('Lỗi khi tải dữ liệu chi tiêu:', expensesError);
         return;
     }
 
     expenses = expensesData || [];
-    participantsData = expenses.map(() => new Array(families.length).fill(0));
+
+    const { data: participantsDataRaw, error: participantsError } = await supabase
+        .from('participants')
+        .select('expense_id, participant_counts')
+        .order('expense_id', { ascending: true });
+
+    if (participantsError) {
+        console.error('Lỗi khi tải dữ liệu participants:', participantsError);
+        return;
+    }
+
+    participantsData = expenses.map(exp => {
+        const participantEntry = participantsDataRaw.find(p => p.expense_id === exp.id);
+        return participantEntry ? participantEntry.participant_counts : new Array(families.length).fill(0);
+    });
 
     const expenseBody = document.getElementById('expenseBody');
     if (!expenseBody) {
@@ -177,13 +232,32 @@ async function updatePayer(index) {
     await loadDataFromSupabase();
 }
 
-function updateParticipants() {
+async function updateParticipants() {
     const rows = document.querySelectorAll('#familyBody tr');
     participantsData = [];
-    rows.forEach(row => {
+    const updates = [];
+
+    rows.forEach((row, index) => {
         const participants = Array.from(row.querySelectorAll('.participants')).map(p => parseInt(p.value) || 0);
         participantsData.push(participants);
+        updates.push({
+            expense_id: expenses[index].id,
+            participant_counts: participants
+        });
     });
+
+    for (const update of updates) {
+        const { error } = await supabase
+            .from('participants')
+            .upsert({ expense_id: update.expense_id, participant_counts: update.participant_counts });
+
+        if (error) {
+            console.error('Lỗi khi cập nhật participants:', error);
+            alert("Có lỗi xảy ra khi cập nhật participants!");
+            return;
+        }
+    }
+
     alert('Dữ liệu số người tham gia đã được lưu!');
 }
 
@@ -586,57 +660,3 @@ async function resetData() {
         alert('Dữ liệu đã được reset!');
     }
 }
-
-async function handleNewExpense(event) {
-    event.preventDefault();
-
-    const item = document.getElementById('newItem').value.trim();
-    const cost = parseInt(document.getElementById('newCost').value);
-    const payer = document.getElementById('newPayer').value;
-    const datetime = document.getElementById('newDatetime').value;
-
-    if (!item || isNaN(cost) || !payer || !datetime) {
-        alert("Vui lòng điền đầy đủ thông tin!");
-        return;
-    }
-
-    const date = datetime.split("T")[0];
-
-    const { data, error } = await supabase
-        .from('expenses')
-        .insert([{ item, cost, date, payer }]);
-
-    if (error) {
-        console.error('Lỗi khi thêm dữ liệu:', error);
-        alert("Có lỗi xảy ra khi thêm dữ liệu!");
-        return;
-    }
-
-    await loadDataFromSupabase();
-    document.getElementById('newExpenseForm').reset();
-    alert("Hạng mục mới đã được thêm!");
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    const now = new Date();
-    const localISOTime = now.toISOString().slice(0, 16);
-    const datetimeInput = document.getElementById('newDatetime');
-    if (datetimeInput) {
-        datetimeInput.value = localISOTime;
-    }
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOM fully loaded, running initial load');
-    await loadFamiliesFromSupabase();
-    await loadDataFromSupabase();
-    updatePayerSelect();
-
-    supabase
-        .channel('expenses-channel')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, (payload) => {
-            console.log('Dữ liệu chi tiêu thay đổi:', payload);
-            loadDataFromSupabase();
-        })
-        .subscribe();
-});
