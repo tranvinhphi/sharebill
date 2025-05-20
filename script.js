@@ -660,3 +660,62 @@ async function resetData() {
         alert('Dữ liệu đã được reset!');
     }
 }
+
+// Thêm hàm handleNewExpense
+async function handleNewExpense(event) {
+    event.preventDefault();
+
+    const item = document.getElementById('newItem').value.trim();
+    const cost = parseInt(document.getElementById('newCost').value);
+    const payer = document.getElementById('newPayer').value;
+    const datetime = document.getElementById('newDatetime').value;
+
+    if (!item || isNaN(cost) || !payer || !datetime) {
+        alert("Vui lòng điền đầy đủ thông tin!");
+        return;
+    }
+
+    const date = datetime.split("T")[0];
+
+    const { data, error } = await supabase
+        .from('expenses')
+        .insert([{ item, cost, date, payer }])
+        .select();
+
+    if (error) {
+        console.error('Lỗi khi thêm dữ liệu:', error);
+        alert("Có lỗi xảy ra khi thêm dữ liệu!");
+        return;
+    }
+
+    const newExpenseId = data[0].id;
+    const initialParticipants = new Array(families.length).fill(0);
+    const { error: participantError } = await supabase
+        .from('participants')
+        .insert([{ expense_id: newExpenseId, participant_counts: initialParticipants }]);
+
+    if (participantError) {
+        console.error('Lỗi khi thêm dữ liệu participants:', participantError);
+        alert("Có lỗi xảy ra khi thêm dữ liệu participants!");
+        return;
+    }
+
+    await loadDataFromSupabase();
+    document.getElementById('newExpenseForm').reset();
+    alert("Hạng mục mới đã được thêm!");
+}
+
+// Cải thiện updatePayerSelect để đảm bảo luôn có option
+function updatePayerSelect() {
+    const select = document.getElementById('newPayer');
+    if (select) {
+        if (families.length === 0) {
+            select.innerHTML = '<option value="" disabled>Chưa có gia đình</option>';
+        } else {
+            select.innerHTML = families.map(f => `<option value="${f}">${f}</option>`).join('');
+            select.value = families[0]; // Default to first family
+        }
+    } else {
+        console.error('Element with id "newPayer" not found');
+    }
+}
