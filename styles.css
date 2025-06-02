@@ -191,6 +191,21 @@ button:hover {
     background-color: #ecf0f1;
     font-weight: bold;
 }
+.popup {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+.popup div {
+    position: relative;
+}
+.popup button {
+    background-color: #3498db;
+    margin: 5px 10px;
+}
+.popup button:hover {
+    background-color: #2980b9;
+}
 @media (max-width: 768px) {
     .tabs {
         flex-direction: column;
