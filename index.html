@@ -1,51 +1,49 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>APP SHARE BILL HỘI HAM CHƠI</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-            return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-                try {
-                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                    var firstSheetName = workbook.SheetNames[0];
-                    var worksheet = workbook.Sheets[firstSheetName];
-
-                    // Convert sheet to JSON to filter blank rows
-                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                    // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                    var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                    // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                    var headerRowIndex = filteredData.findIndex((row, index) =>
-                        row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                    );
-                    // Fallback
-                    if (headerRowIndex === -1 || headerRowIndex > 25) {
-                        headerRowIndex = 0;
-                    }
-
-                    // Convert filtered JSON back to CSV
-                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                    return csv;
-                } catch (e) {
-                    console.error(e);
-                    return "";
-                }
-            }
-            return gk_fileData[filename] || "";
-        }
-    </script>
 </head>
 <body>
     <header>
@@ -53,42 +51,42 @@
     </header>
 
     <div class="tabs">
-        <button class="tablink active" onclick="openTab(event, 'Tab0')">Thêm</button>
-        <button class="tablink" onclick="openTab(event, 'Tab1')">Chi tiêu</button>
-        <button class="tablink" onclick="openTab(event, 'Tab2')">Tham gia</button>
-        <button class="tablink" onclick="openTab(event, 'Tab3')">Tổng</button>
+        <button class="tablink active" onclick="openTab(event, 'MainTab')">Trang Chính</button>
+        <button class="tablink" onclick="openTab(event, 'Tab1')">Mục chi tiêu</button>
+        <button class="tablink" onclick="openTab(event, 'Tab2')">Gia đình tham gia</button>
+        <button class="tablink" onclick="openTab(event, 'Tab3')">Tổng kết</button>
     </div>
 
-    <div class="tabcontent" id="Tab0" style="display: block;">
-        <h3>Thêm hạng mục chi tiêu mới</h3>
-        <form id="newExpenseForm" onsubmit="handleNewExpense(event)" class="expense-form">
-            <div class="form-group">
-                <label for="newItem">Hạng mục chi tiêu:</label>
-                <input type="text" id="newItem" placeholder="Nhập tên hạng mục" required>
-            </div>
-            <div class="form-group">
-                <label for="newCost">Số tiền chi tiêu (VNĐ):</label>
-                <input type="number" id="newCost" placeholder="Nhập số tiền" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="newPayer">Người chi:</label>
-                <select id="newPayer" required>
-                    <option value="" disabled selected>Chọn người chi</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="newDatetime">Ngày giờ:</label>
-                <input type="datetime-local" id="newDatetime" required>
-            </div>
-            <div class="form-buttons">
-                <button type="submit" class="add-btn"><span class="icon">+</span></button>
-            </div>
-        </form>
+    <div id="MainTab" class="tabcontent" style="display: block;">
+        <h2>Nhập Chi Tiêu Mới</h2>
+        <table>
+            <tbody>
+                <tr>
+                    <td><label for="item">Hạng mục chi tiêu:</label></td>
+                    <td><input type="text" id="item" required></td>
+                </tr>
+                <tr>
+                    <td><label for="cost">Số tiền chi (VNĐ):</label></td>
+                    <td><input type="number" id="cost" required></td>
+                </tr>
+                <tr>
+                    <td><label for="date">Ngày giờ:</label></td>
+                    <td><input type="datetime-local" id="date" value="2025-05-19T14:13" required></td>
+                </tr>
+                <tr>
+                    <td><label for="payer">Người chi:</label></td>
+                    <td><select id="payer" required></select></td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="controls">
+            <button onclick="saveExpense()">Lưu</button>
+        </div>
     </div>
 
-    <div class="tabcontent" id="Tab1">
-        <h3>Hạng mục chi tiêu</h3>
-        <table id="expenseTable">
+    <div id="Tab1" class="tabcontent">
+        <h2>Hạng mục chi tiêu</h2>
+        <table>
             <thead>
                 <tr>
                     <th>STT</th>
@@ -101,12 +99,13 @@
             <tbody id="expenseBody"></tbody>
         </table>
         <div class="controls">
+            <button class="add-btn" onclick="addExpense()">+</button>
             <button class="setting-btn" onclick="toggleEditMode('expense')">Setting</button>
         </div>
     </div>
 
-    <div class="tabcontent" id="Tab2">
-        <h3>Gia đình tham gia</h3>
+    <div id="Tab2" class="tabcontent">
+        <h2>Gia đình tham gia</h2>
         <table id="familyTable">
             <thead id="familyTableHead">
                 <tr></tr>
@@ -121,14 +120,14 @@
         </div>
     </div>
 
-    <div class="tabcontent" id="Tab3">
-        <h3>Tổng kết</h3>
+    <div id="Tab3" class="tabcontent">
+        <h2>Tổng kết</h2>
         <div class="filter">
-            <label>Từ ngày:</label>
+            <label for="startDate">Từ ngày:</label>
             <input type="date" id="startDate">
-            <label>Đến ngày:</label>
+            <label for="endDate">Đến ngày:</label>
             <input type="date" id="endDate">
-            <button class="update-btn" onclick="filterResults()">Lọc</button>
+            <button onclick="filterResults()">Lọc</button>
         </div>
         <table id="resultTable">
             <thead id="resultTableHead">
@@ -138,10 +137,12 @@
             <tfoot id="resultFooter"></tfoot>
         </table>
         <div id="summary">
-            <h4>Tổng kết</h4>
+            <h3>Tổng kết</h3>
             <div id="summaryList"></div>
         </div>
-        <div id="refundList"></div>
+        <div id="refundList">
+            <h3>Hoàn trả</h3>
+        </div>
         <div class="controls">
             <button class="reset-btn" onclick="resetData()">Reset Data</button>
         </div>
